@@ -8,6 +8,17 @@
   </head>
   <body>
     <h2>Hello World</h2>
+    <div style="width: 500px;">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script type="text/javascript" src="moment.js"></script>
+    <script type="text/javascript" src="Chart.js"></script>
+    <script type="text/javascript" src="chartjs-plugin-streaming.js"></script>
+
+    <script>
+        let data = [];
+    </script>
 
     <script>
         let socket = new WebSocket("ws://127.0.0.1:1234/ws");
@@ -29,8 +40,42 @@
 
         socket.onmessage = event => {
             console.log("Data: ", event.data);
+            data.push({
+                x: Date.now(),
+                y: parseInt(event.data)
+            })
+            console.log(data);
         };
 
     </script>
+
+    <script>
+        var ctx = document.getElementById('myChart').getContext('2d');
+        var chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                datasets: [{
+                data: []
+                },]
+            },
+
+            options: {
+                scales: {
+                    xAxes: [{
+                        type: 'time',
+                        realtime: {
+                            delay: 2000,
+                            onRefresh: function(chart) {
+                                chart.data.datasets.forEach(function(dataset) {
+                                    dataset.data.push(...data);
+                                });
+                            }
+                        }
+                    }]
+                }
+            }
+        });
+    </script>
+
   </body>
 </html>

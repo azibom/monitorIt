@@ -29,13 +29,12 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	// helpful log statement to show connections
 	log.Println("Client Connected")
-	err = ws.WriteMessage(1, []byte("Hi Client!"))
 	if err != nil {
 		log.Println(err)
 	}
 
-	for i := 0; i < 3; i++ {
-		err = ws.WriteMessage(1, []byte("Hi Client!"+strconv.Itoa(i)))
+	for i := 0; i < 100; i++ {
+		err = ws.WriteMessage(1, []byte(strconv.Itoa(i)))
 		time.Sleep(1 * time.Second)
 	}
 }
