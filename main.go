@@ -1,13 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/shirou/gopsutil/cpu"
 )
 
 var upgrader = websocket.Upgrader{
@@ -27,15 +28,16 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 
-	// helpful log statement to show connections
 	log.Println("Client Connected")
 	if err != nil {
 		log.Println(err)
 	}
 
-	for i := 0; i < 100; i++ {
-		err = ws.WriteMessage(1, []byte(strconv.Itoa(i)))
-		time.Sleep(1 * time.Second)
+	for {
+		percentage, _ := cpu.Percent(0, true)
+		jsonData, _ := json.Marshal(percentage)
+		ws.WriteMessage(1, []byte(jsonData))
+		time.Sleep(1000 * time.Millisecond)
 	}
 }
 
