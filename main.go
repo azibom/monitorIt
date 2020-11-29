@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"text/template"
 	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/mem"
 )
 
 var upgrader = websocket.Upgrader{
@@ -17,7 +19,13 @@ var upgrader = websocket.Upgrader{
 }
 
 func homePage(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Home Page")
+	tmpl, _ := template.ParseFiles("index.html")
+	tmpl.Execute(w, "data goes here")
+}
+
+type SystemInfo struct {
+	CPU    []float64
+	MEMORY float64
 }
 
 func wsEndpoint(w http.ResponseWriter, r *http.Request) {
@@ -35,8 +43,15 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		percentage, _ := cpu.Percent(0, true)
-		jsonData, _ := json.Marshal(percentage)
-		ws.WriteMessage(1, []byte(jsonData))
+		swapMemory, _ := mem.SwapMemory()
+		systemInfo := SystemInfo{percentage, swapMemory.UsedPercent}
+		jsonData, err := json.Marshal(systemInfo)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		ws.WriteMessage(1, jsonData)
 		time.Sleep(1000 * time.Millisecond)
 	}
 }
@@ -44,6 +59,9 @@ func wsEndpoint(w http.ResponseWriter, r *http.Request) {
 func setupRoutes() {
 	http.HandleFunc("/", homePage)
 	http.HandleFunc("/ws", wsEndpoint)
+
+	fs := http.FileServer(http.Dir("static/"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 }
 
 func main() {
