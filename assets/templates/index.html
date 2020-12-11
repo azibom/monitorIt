@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Go WebSocket Tutorial</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  </head>
+  <body>
+
+    <div class="container">
+        <h1>MonitorIt</h1>
+        <p>This example demonstrates a 50%/50% split on small, medium and large devices. On extra small devices, it will stack (100% width).</p>      
+        <p>Resize the browser window to see the effect.</p>      
+        <div class="row">
+            <div class="col-sm-6">
+            Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.<br>
+            Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+            </div>
+            <div class="col-sm-6">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="/assets/js/moment.js"></script>
+    <script type="text/javascript" src="/assets/js/Chart.js"></script>
+    <script type="text/javascript" src="/assets/js/chartjs-plugin-streaming.js"></script>
+
+    <script>
+        let cpuData = [];
+        let runOneTime = 1;
+    </script>
+
+    <script>
+        function initChart(cpuCount) {
+            var ctx = document.getElementById('myChart').getContext('2d');
+            let datasets = [];
+            for (let index = 1; index <= cpuCount; index++) {
+                datasets.push({
+                    data: [],
+                    label: "cpu " + index
+                });
+            }
+
+            var chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+
+                options: {
+                    scales: {
+                        xAxes: [{
+                            type: 'time',
+                            realtime: {
+                                delay: 2000,
+                                onRefresh: function(chart) {
+                                    let datasetIndex = 0;
+                                    chart.data.datasets.forEach(function(dataset) {
+                                        dataset.data.push(...cpuData[datasetIndex]);
+                                        cpuData[datasetIndex] = [];
+                                        datasetIndex ++;
+                                    });
+                                }
+                            }
+                        }]
+                    }
+                }
+            });
+        }
+    </script>
+
+    <script>
+        let socket = new WebSocket("ws://127.0.0.1:1234/ws");
+        console.log("Attempting Connection...");
+
+        socket.onopen = () => {
+            console.log("Successfully Connected");
+            socket.send("Hi From the Client!")
+        };
+        
+        socket.onclose = event => {
+            console.log("Socket Closed Connection: ", event);
+            socket.send("Client Closed!")
+        };
+
+        socket.onerror = error => {
+            console.log("Socket Error: ", error);
+        };
+
+        socket.onmessage = event => {
+            let JsonData = JSON.parse(event.data)
+            let cpuJsonData = JsonData["CPU"];
+            let cpuCount = cpuJsonData.length;
+            if (runOneTime) {
+                initChart(cpuCount)
+                runOneTime = 0;
+            }
+            for (let index = 0; index < cpuJsonData.length; index++) {
+                if(typeof cpuData[index] === 'undefined') {
+                    cpuData[index] = []
+                }
+                cpuData[index].push({
+                    x: Date.now(),
+                    y: cpuJsonData[index]
+                })
+            }
+        };
+    </script>
+  </body>
+</html>
